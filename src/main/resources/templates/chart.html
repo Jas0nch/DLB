@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>CPU usage</title>
+  <!-- 引入 echarts.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/4.3.0/echarts.min.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.3.js"></script>
+</head>
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div id="main" style="width: 600px;height:400px;"></div>
+<script th:inline="javascript">
+  function refresh(myChart){
+    $.ajax({
+      type: "GET",
+      url: ("/refresh"),
+      success: function(data){
+        console.log("refreshing");
+
+        load(myChart, data);
+        console.log("refresh succeeded");
+        },
+      fail: function(){console.log("refresh failed");}
+    });
+  }
+
+  function load(myChart, data){
+    myChart.setOption({
+      title: {
+        text: 'CPU usage'
+      },
+      tooltip: {
+        trigger: 'axis'
+      },
+      legend: {
+        data:['CPU usage']
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      toolbox: {
+        feature: {
+          saveAsImage: {}
+        }
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: ["1","2","3","4","5","6","7","8","9","10"]
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+
+        {
+          name:'CPU usage',
+          type:'line',
+          stack: 'total',
+          data: data
+        }
+      ]
+    });
+  }
+
+  var myChart = echarts.init(document.getElementById('main'));
+
+  // refresh(myChart);
+  setInterval("refresh(myChart)", 1000);
+</script>
+</body>
+</html>
+
