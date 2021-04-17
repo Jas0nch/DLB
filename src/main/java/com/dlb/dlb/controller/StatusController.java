@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class StatusController {
   @Autowired MonitoringService monitoringService;
-  String clientUrl = "http://152.7.99.38:8080";
+  String clientUrl = "http://3.235.98.92:8080";
 
   @GetMapping("/hello")
   public String hello() {
@@ -27,7 +27,7 @@ public class StatusController {
   //  http://152.7.99.38:8000/search_by_title/distributed
   @GetMapping("/refresh")
   @ResponseBody
-  public String[] refresh() throws ExecutionException, InterruptedException {
+  public String[] refresh() throws Exception {
     monitoringService.addUrl(clientUrl);
     String[] cpuData = monitoringService.getCpuData(clientUrl);
     String[] ret = new String[cpuData.length + 1];
