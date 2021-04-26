@@ -1,7 +1,7 @@
 package com.dlb.dlb.controller;
 
+import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
-import java.util.concurrent.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,9 +11,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class StatusController {
   @Autowired MonitoringService monitoringService;
-  String clientUrl = "http://3.235.98.92:8080";
+  @Autowired ManageService manageService;
+
+  String clientUrl = "http://3.230.127.51:8080";
 
   @GetMapping("/hello")
+  @ResponseBody
   public String hello() {
     return "hello";
   }
@@ -42,6 +45,13 @@ public class StatusController {
   @GetMapping("/online")
   @ResponseBody
   public boolean online() throws Exception {
-    return monitoringService.onlineStatus(clientUrl);
+    boolean res = monitoringService.onlineStatus(clientUrl);
+    return res;
+  }
+
+  @GetMapping("/test")
+  @ResponseBody
+  public void test() {
+    manageService.startNode(null);
   }
 }
