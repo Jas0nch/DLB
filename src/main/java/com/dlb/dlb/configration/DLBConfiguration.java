@@ -2,6 +2,7 @@ package com.dlb.dlb.configration;
 
 import com.dlb.dlb.scheduling.Scheduler;
 import com.dlb.dlb.scheduling.SchedulerFactory;
+import com.dlb.dlb.service.ManageService;
 import lombok.Data;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +25,7 @@ public class DLBConfiguration {
 
     @Bean
     @SuppressWarnings("all")
-    public UpstreamServerGroups upstreamServerGroups() {
+    public UpstreamServerGroups upstreamServerGroups(ManageService manageService) {
         String policy = (String) map.getOrDefault("policy", "rr");
 
         UpstreamServerGroups serverGroups = new UpstreamServerGroups();
@@ -49,7 +50,16 @@ public class DLBConfiguration {
                 servers.add(server);
             }
 
-            UpstreamServerGroup serverGroup = new UpstreamServerGroup(name, servers, SchedulerFactory.createScheduler(policy));
+            List<UpstreamServer> runningServers = new ArrayList<>();
+
+            for (UpstreamServer server : servers) {
+                if (manageService.startNode(server.getHost())) {
+                    runningServers.add(server);
+                    break;
+                }
+            }
+
+            UpstreamServerGroup serverGroup = new UpstreamServerGroup(name, servers, runningServers, SchedulerFactory.createScheduler(policy));
 
             serverGroups.addGroup(serverGroup);
         }
@@ -77,7 +87,7 @@ public class DLBConfiguration {
         return uriMapping;
     }
 
-    @Data
+
     public static class UpstreamServerGroups {
         private Map<String, UpstreamServerGroup> map = new HashMap<>();
 
@@ -86,19 +96,29 @@ public class DLBConfiguration {
         public void addGroup(UpstreamServerGroup serverGroup) {
             map.put(serverGroup.getName(), serverGroup);
         }
+
+        public UpstreamServerGroup serverGroup(String groupName) {
+            return map.get(groupName);
+        }
     }
 
     @Data
     public static class UpstreamServerGroup {
         private String name;
         private List<UpstreamServer> servers;
+        private List<UpstreamServer> runningServers;
         private Scheduler scheduler;
 
-        public UpstreamServerGroup(String name, List<UpstreamServer> servers, Scheduler scheduler) {
+        public String taskServer() {
+            return scheduler.schedule();
+        }
+
+        public UpstreamServerGroup(String name, List<UpstreamServer> servers, List<UpstreamServer> runningServers, Scheduler scheduler) {
             this.name = name;
-            scheduler.setServers(servers);
+            scheduler.setServers(runningServers);
             this.servers = servers;
             this.scheduler = scheduler;
+            this.runningServers = runningServers;
         }
     }
 
@@ -106,7 +126,7 @@ public class DLBConfiguration {
     public static class UpstreamServer {
         private String server;
         private String host;
-        private String port;
+        private int port;
         private int weight;
 
         public UpstreamServer(String server, int weight) {
@@ -114,7 +134,7 @@ public class DLBConfiguration {
             this.weight = weight;
             String[] split = server.split(":");
             this.host = split[0];
-            this.port = split[1];
+            this.port = Integer.parseInt(split[1]);
         }
     }
 
@@ -123,6 +143,10 @@ public class DLBConfiguration {
         private Map<String, String> map = new HashMap<>();
 
         public URIMapping() {}
+
+        public Set<String> allUris() {
+            return map.keySet();
+        }
 
         public String groupName(String path) {
             return map.get(path);
