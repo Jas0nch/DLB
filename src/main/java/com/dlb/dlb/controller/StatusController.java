@@ -51,7 +51,8 @@ public class StatusController {
 
   @GetMapping("/test")
   @ResponseBody
-  public void test() {
-    manageService.stopNode(null);
+  public void test() throws Exception {
+    String host = "18.209.211.129";
+    manageService.stopNode(host);
   }
 }
