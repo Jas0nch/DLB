@@ -52,6 +52,6 @@ public class StatusController {
   @GetMapping("/test")
   @ResponseBody
   public void test() {
-    manageService.startNode(null);
+    manageService.stopNode(null);
   }
 }

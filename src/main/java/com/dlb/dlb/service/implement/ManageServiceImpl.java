@@ -4,6 +4,7 @@ import com.dlb.dlb.service.ManageService;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.PullImageCmd;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
@@ -12,12 +13,14 @@ import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.Ports.Binding;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.CreateContainerCmdImpl;
+import javax.annotation.Resource;
+import javax.annotation.Resources;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ManageServiceImpl implements ManageService {
 
-  String host = "3.230.127.51";
+  String host = "18.209.211.129";
   @Override
   public boolean addNode() {
     return false;
@@ -28,16 +31,27 @@ public class ManageServiceImpl implements ManageService {
     return false;
   }
 
+
+
   @Override
   public boolean stopNode(String ip) {
-    return false;
+    DockerClient dockerClient = DockerClientBuilder.getInstance("tcp://" + host + ":2375").build();
+
+    InspectContainerResponse inspectContainerResponse = dockerClient.inspectContainerCmd(containerName).exec();
+
+    dockerClient.stopContainerCmd(inspectContainerResponse.getId()).withTimeout(2).exec();
+
+    return true;
   }
 
   static String imageName = "stangithubdocker/dlb-agent";
 
+  static String containerName = "agent";
+
   @Override
   public boolean startNode(String ip) {
     DockerClient dockerClient = DockerClientBuilder.getInstance("tcp://" + host + ":2375").build();
+
     Info info = dockerClient.infoCmd().exec();
 
     dockerClient.pullImageCmd(imageName);
@@ -48,6 +62,7 @@ public class ManageServiceImpl implements ManageService {
     portBindings.bind(tcp8081, Binding.bindPort(8080));
 
     CreateContainerResponse container = dockerClient.createContainerCmd(imageName).withCmd("-d")
+        .withName(containerName)
         .withExposedPorts(tcp8081)
         .withHostConfig(new HostConfig()
             .withPortBindings(portBindings)).exec();
