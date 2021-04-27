@@ -4,9 +4,7 @@ import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -67,8 +65,10 @@ public class MonitoringServiceImpl implements MonitoringService {
   public void deleteUrl(String groupName, String url){
     urls.get(groupName).remove(url);
 
-    if (urls.get(groupName).size() == 0)
+    if (urls.get(groupName).size() == 0){
       groupTimer.get(groupName).cancel();
+      groupTimer.remove(groupName);
+    }
 
     cpuData.remove(url);
     memData.remove(url);
@@ -83,6 +83,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   public void stopHeartbeat(String url){
     if (urlTimer.containsKey(url)){
       urlTimer.get(url).cancel();
+      urlTimer.remove(url);
     }
   }
 
@@ -90,7 +91,8 @@ public class MonitoringServiceImpl implements MonitoringService {
     return status.getOrDefault(clientUrl, false);
   }
 
-  int cnt = 0;
+  int hbCnt = 0;
+  int dsCnt = 0;
 
   synchronized void manageServer(String groupName) throws Exception {
     try{
@@ -108,16 +110,22 @@ public class MonitoringServiceImpl implements MonitoringService {
         mem += Double.valueOf(responseArr[2]);
       }
 
-      if (cnt > 15){
+      if (hbCnt > 15){
         if (cpu / size / 100 > cpuScaleThreshold || mem / size / 100 > memScaleThreshold) {
           manageService.scale(groupName);
+          dsCnt = 0;
         } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
-          manageService.descale(groupName);
+          dsCnt++;
+          if (dsCnt > 120)
+            manageService.descale(groupName);
+        }
+        else {
+          dsCnt = 0;
         }
       }
 
-      cnt++;
-      cnt %= 100000;
+      hbCnt++;
+      hbCnt %= 100000;
     }
     catch (Exception e){
       e.printStackTrace();

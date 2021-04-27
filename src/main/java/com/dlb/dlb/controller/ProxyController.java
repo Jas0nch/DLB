@@ -42,7 +42,7 @@ public class ProxyController {
 
         DLBConfiguration.UpstreamServerGroup serverGroup = serverGroups.serverGroup(groupName);
 
-        String server = serverGroup.taskServer(request);
+        String server = "http://" + serverGroup.taskServer(request);
 
         // send request
         WebClient client = WebClient.builder()
