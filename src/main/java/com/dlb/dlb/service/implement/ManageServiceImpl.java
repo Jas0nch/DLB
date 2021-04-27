@@ -6,6 +6,7 @@ import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ExposedPort;
@@ -13,6 +14,7 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Info;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.Ports.Binding;
+import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.core.DockerClientBuilder;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timeout;
@@ -34,11 +36,11 @@ public class ManageServiceImpl implements ManageService {
 
   boolean useDocker = true;
 
-  @Autowired
   MonitoringService monitoringService;
 
-  public ManageServiceImpl(UpstreamServerGroups upstreamServerGroups){
+  public ManageServiceImpl(UpstreamServerGroups upstreamServerGroups, MonitoringService monitoringService){
     this.upstreamServerGroups = upstreamServerGroups;
+    this.monitoringService = monitoringService;
     for (String groupName:upstreamServerGroups.getMap().keySet()){
       scale(groupName);
     }
@@ -80,7 +82,7 @@ public class ManageServiceImpl implements ManageService {
       }
       return true;
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      e.printStackTrace();
       return false;
     }
   }
@@ -115,6 +117,7 @@ public class ManageServiceImpl implements ManageService {
       if (!find) {
         res = startNode(upstreamServer.getHost());
         if (res) {
+          System.out.println("starting " + upstreamServer.getHost().toString());
           upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
           monitoringService.addUrl(groupName, upstreamServer.getHost());
         }
@@ -170,7 +173,9 @@ public class ManageServiceImpl implements ManageService {
 
       Info info = dockerClient.infoCmd().exec();
 
-      dockerClient.pullImageCmd(imageName);
+      dockerClient.pullImageCmd(imageName)
+          .start()
+          .awaitCompletion(30, TimeUnit.SECONDS);
 
       ExposedPort tcp8081 = ExposedPort.tcp(8081);
 
@@ -197,7 +202,7 @@ public class ManageServiceImpl implements ManageService {
 
       return false;
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      e.printStackTrace();
       return false;
     }
   }

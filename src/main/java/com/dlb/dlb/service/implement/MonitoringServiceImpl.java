@@ -30,8 +30,8 @@ public class MonitoringServiceImpl implements MonitoringService {
   static ConcurrentHashMap<String, LinkedList<String>> cpuData = new ConcurrentHashMap<>();
   static ConcurrentHashMap<String, LinkedList<String>> memData = new ConcurrentHashMap<>();
   static String live = "hello";
-  static String heartbeatSuffix = "/hello";
-  static String statusSuffix = "/cpu";
+  static String heartbeatSuffix = ":8080/hello";
+  static String statusSuffix = ":8080/cpu";
   int capacity = 10;
   ConcurrentHashMap<String, Boolean> status;
   ConcurrentHashMap<String, HashSet<String>> urls; // urls need to be monitoring
@@ -46,7 +46,6 @@ public class MonitoringServiceImpl implements MonitoringService {
 
   public MonitoringServiceImpl() throws ExecutionException, InterruptedException {
     status = new ConcurrentHashMap<>();
-//    Map<String, UpstreamServerGroup> map = upstreamServerGroups.getMap();
     urls = new ConcurrentHashMap<>();
     heartbeating = new ConcurrentHashMap<>();
   }
@@ -88,12 +87,7 @@ public class MonitoringServiceImpl implements MonitoringService {
 
   public void heartbeat(String groupName) {
     try {
-
       for (String url : urls.get(groupName)) {
-        if (heartbeating.get(groupName).contains(url)) {
-          continue;
-        }
-
         if (!heartbeating.containsKey(groupName)) {
           heartbeating.put(groupName, new HashSet<>());
           // create a task manager whole group
@@ -107,8 +101,12 @@ public class MonitoringServiceImpl implements MonitoringService {
                       manageServer(groupName);
                     }
                   },
-                  1000,
+                  10000,
                   1000);
+        }
+
+        if (heartbeating.get(groupName).contains(url)) {
+          continue;
         }
 
         heartbeating.get(groupName).add(url);
@@ -131,12 +129,12 @@ public class MonitoringServiceImpl implements MonitoringService {
                     manageServer(groupName);
                   }
                 },
-                1000,
+                10000,
                 1000);
       }
 
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      System.out.println(e.getStackTrace());
     }
   }
 
