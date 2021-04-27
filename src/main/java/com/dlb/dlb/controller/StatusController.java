@@ -31,7 +31,7 @@ public class StatusController {
   @GetMapping("/refresh")
   @ResponseBody
   public String[] refresh() throws Exception {
-//    monitoringService.addUrl(clientUrl);
+    monitoringService.addUrl("test", clientUrl);
     String[] cpuData = monitoringService.getCpuData(clientUrl);
     String[] ret = new String[cpuData.length + 1];
     ret[0] = String.valueOf(monitoringService.onlineStatus(clientUrl));

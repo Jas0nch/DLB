@@ -34,7 +34,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   static String heartbeatSuffix = "/hello";
   static String statusSuffix = "/cpu";
   int capacity = 10;
-  HashMap<String, Boolean> status;
+  ConcurrentHashMap<String, Boolean> status;
   ConcurrentHashMap<String, HashSet<String>> urls; // urls need to be monitoring
   ConcurrentHashMap<String, HashSet<String>> heartbeating; // urls already monitoring
 
@@ -48,7 +48,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   UpstreamServerGroups upstreamServerGroups;
 
   public MonitoringServiceImpl() throws ExecutionException, InterruptedException {
-    status = new HashMap<>();
+    status = new ConcurrentHashMap<>();
     Map<String, UpstreamServerGroup> map = upstreamServerGroups.getMap();
     urls = new ConcurrentHashMap<>();
     heartbeating = new ConcurrentHashMap<>();
@@ -58,6 +58,9 @@ public class MonitoringServiceImpl implements MonitoringService {
     if (!urls.containsKey(groupName)) urls.put(groupName, new HashSet<>());
 
     urls.get(groupName).add(url);
+
+    cpuData.put(url, new LinkedList<>());
+    memData.put(url, new LinkedList<>());
 
     heartbeat(groupName);
   }
