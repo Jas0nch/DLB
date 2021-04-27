@@ -2,13 +2,12 @@ package com.dlb.dlb.configration;
 
 import com.dlb.dlb.scheduling.Scheduler;
 import com.dlb.dlb.scheduling.SchedulerFactory;
-import com.dlb.dlb.service.ManageService;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 
 import java.util.*;
 
@@ -114,8 +113,8 @@ public class DLBConfiguration {
         private List<UpstreamServer> runningServers = new ArrayList<>();
         private Scheduler scheduler;
 
-        public String taskServer() {
-            return scheduler.schedule();
+        public String taskServer(ServerHttpRequest request) {
+            return scheduler.schedule(request);
         }
 
         public UpstreamServerGroup(String name, List<UpstreamServer> servers, Scheduler scheduler) {
@@ -126,7 +125,9 @@ public class DLBConfiguration {
         }
 
         public void addRunningServer(UpstreamServer upstreamServer){
-            runningServers.add(upstreamServer);
+            synchronized (runningServers) {
+                runningServers.add(upstreamServer);
+            }
         }
 
         public void deleteRunningServer(int index){

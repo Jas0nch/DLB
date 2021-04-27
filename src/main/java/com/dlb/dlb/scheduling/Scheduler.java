@@ -3,6 +3,7 @@ package com.dlb.dlb.scheduling;
 
 import com.dlb.dlb.configration.DLBConfiguration;
 import lombok.Data;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 
 import java.util.List;
 
@@ -13,5 +14,5 @@ public abstract class Scheduler {
 
     public Scheduler() {}
 
-    public abstract String schedule();
+    public abstract String schedule(ServerHttpRequest request);
 }
