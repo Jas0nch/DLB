@@ -39,7 +39,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   double cpuScaleThreshold = 0.2;
   double cpuDescaleThreshold = 0.5;
 
-  double memScaleThreshold = 0.75;
+  double memScaleThreshold = 1.1;
   double memDescaleThreshold = 0.5;
 
 
@@ -90,6 +90,8 @@ public class MonitoringServiceImpl implements MonitoringService {
     return status.getOrDefault(clientUrl, false);
   }
 
+  int cnt = 0;
+
   synchronized void manageServer(String groupName) throws Exception {
     try{
       double cpu = 0;
@@ -106,11 +108,16 @@ public class MonitoringServiceImpl implements MonitoringService {
         mem += Double.valueOf(responseArr[2]);
       }
 
-      if (cpu / size / 100 > cpuScaleThreshold || mem / size / 100 > memScaleThreshold) {
-        manageService.scale(groupName);
-      } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
-        manageService.descale(groupName);
+      if (cnt > 15){
+        if (cpu / size / 100 > cpuScaleThreshold || mem / size / 100 > memScaleThreshold) {
+          manageService.scale(groupName);
+        } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
+          manageService.descale(groupName);
+        }
       }
+
+      cnt++;
+      cnt %= 100000;
     }
     catch (Exception e){
       e.printStackTrace();
@@ -191,11 +198,7 @@ public class MonitoringServiceImpl implements MonitoringService {
                   //                  System.out.println(line);
                   res += line + " ";
                 }
-              } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-              } catch (IOException e) {
-                e.printStackTrace();
-              } catch (Exception e) {
+              }catch (Exception e) {
                 System.out.println(e.getMessage());
               }
 

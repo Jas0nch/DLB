@@ -9,9 +9,11 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Info;
+import com.github.dockerjava.api.model.Link;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.Ports.Binding;
 import com.github.dockerjava.api.model.PullResponseItem;
@@ -22,7 +24,9 @@ import io.netty.util.TimerTask;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Timer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import javax.swing.plaf.basic.BasicButtonUI;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,8 +34,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ManageServiceImpl implements ManageService {
 
-  static String imageName = "stangithubdocker/dlb-agent";
-  static String containerName = "agent";
+  static String imageName = "stangithubdocker/dlb-client";
+  static String containerName = "client";
 
   UpstreamServerGroups upstreamServerGroups;
   String dockerDaemonPort = "2375";
@@ -110,14 +114,22 @@ public class ManageServiceImpl implements ManageService {
     for (UpstreamServer upstreamServer : all) {
       boolean find = false;
       for (UpstreamServer run : running) {
-        if (upstreamServer.equals(run)) {
+        if (upstreamServer.getHost().equals(run.getHost())) {
           find = true;
           break;
         }
       }
 
       if (!find) {
-        res = startNode(upstreamServer.getHost());
+        if (buffer.containsKey(upstreamServer.getHost())){
+          buffer.get(upstreamServer.getHost()).cancel();
+          buffer.remove(upstreamServer.getHost());
+          res = true;
+        }
+        else {
+          res = startNode(upstreamServer.getHost());
+        }
+
         if (res) {
           System.out.println("starting " + upstreamServer.getHost());
 
@@ -131,7 +143,7 @@ public class ManageServiceImpl implements ManageService {
                 }
               };
 
-          timer.newTimeout(task, 5, TimeUnit.SECONDS);
+          timer.newTimeout(task, 10, TimeUnit.SECONDS);
         }
         break;
       }
@@ -146,6 +158,8 @@ public class ManageServiceImpl implements ManageService {
           1,
           TimeUnit.SECONDS,
           100);
+
+  ConcurrentHashMap<String, Timeout> buffer = new ConcurrentHashMap<>();
 
   // stop server after 10 seconds
   @Override
@@ -170,8 +184,8 @@ public class ManageServiceImpl implements ManageService {
           }
         };
 
-    timer.newTimeout(task, 10, TimeUnit.SECONDS);
-
+    Timeout timeout = timer.newTimeout(task, 10, TimeUnit.SECONDS);
+    buffer.put(chosen.getHost(), timeout);
     return false;
   }
 
@@ -182,6 +196,7 @@ public class ManageServiceImpl implements ManageService {
   // TODO change this to configuration version
   boolean startNodeUsingDocker(String ip){
     try {
+      System.out.println("Starting node in " + ip);
       DockerClient dockerClient =
           DockerClientBuilder.getInstance("tcp://" + ip + ":" + dockerDaemonPort).build();
 
@@ -192,11 +207,18 @@ public class ManageServiceImpl implements ManageService {
           .awaitCompletion(30, TimeUnit.SECONDS);
 
       ExposedPort tcp8081 = ExposedPort.tcp(8081);
+      ExposedPort tcp8000 = ExposedPort.tcp(8000);
 
       Ports portBindings = new Ports();
       portBindings.bind(tcp8081, Binding.bindPort(8080));
+      portBindings.bind(tcp8000, Binding.bindPort(8000));
 
-      dockerClient.removeContainerCmd(containerName).exec();
+      try{
+        dockerClient.removeContainerCmd(containerName).exec();
+      }
+      catch (Exception e){
+        System.out.println("remove error");
+      }
 
       CreateContainerResponse container =
           dockerClient
@@ -207,6 +229,7 @@ public class ManageServiceImpl implements ManageService {
               .withCmd("/bin/sh")
               .withStdinOpen(true)
               .withTty(true)
+              .withLinks(new Link("es", "es"))
               .exec();
 
       dockerClient.startContainerCmd(container.getId()).exec();
@@ -220,7 +243,7 @@ public class ManageServiceImpl implements ManageService {
 
       return false;
     } catch (Exception e) {
-      e.printStackTrace();
+      System.out.println(e.getMessage());
       return false;
     }
   }
