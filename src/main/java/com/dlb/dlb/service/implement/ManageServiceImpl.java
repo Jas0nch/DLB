@@ -1,5 +1,6 @@
 package com.dlb.dlb.service.implement;
 
+import com.dlb.dlb.configration.DLBConfiguration;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServer;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
@@ -21,20 +22,28 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 @Service
 public class ManageServiceImpl implements ManageService {
 
   static String imageName = "stangithubdocker/dlb-agent";
   static String containerName = "agent";
-  @Autowired UpstreamServerGroups upstreamServerGroups;
+
+  UpstreamServerGroups upstreamServerGroups;
   String dockerDaemonPort = "2375";
 
   boolean useDocker = true;
 
   @Autowired
   MonitoringService monitoringService;
+
+  public ManageServiceImpl(UpstreamServerGroups upstreamServerGroups){
+    this.upstreamServerGroups = upstreamServerGroups;
+    for (String groupName:upstreamServerGroups.getMap().keySet()){
+      scale(groupName);
+    }
+  }
+
 
   @Override
   public boolean addNode() {
@@ -55,7 +64,7 @@ public class ManageServiceImpl implements ManageService {
     }
   }
 
-  boolean stopNodeUsingDocker(String ip) throws Exception {
+  boolean stopNodeUsingDocker(String ip){
     try {
       DockerClient dockerClient = DockerClientBuilder.getInstance("tcp://" + ip + ":2375").build();
 
@@ -77,11 +86,11 @@ public class ManageServiceImpl implements ManageService {
   }
 
   boolean stopNodeUsingK8s(String ip) throws Exception {
-    throw new NotImplementedException();
+    return false;
   }
 
   @Override
-  public boolean startNode(String ip) throws Exception {
+  public boolean startNode(String ip){
     if (useDocker) {
       return startNodeUsingDocker(ip);
     } else {
@@ -90,7 +99,7 @@ public class ManageServiceImpl implements ManageService {
   }
 
   @Override
-  public synchronized boolean scale(String groupName) throws Exception {
+  public synchronized boolean scale(String groupName){
     List<UpstreamServer> all = upstreamServerGroups.serverGroup(groupName).getServers();
     List<UpstreamServer> running = upstreamServerGroups.serverGroup(groupName).getRunningServers();
     boolean res = false;
@@ -149,12 +158,12 @@ public class ManageServiceImpl implements ManageService {
     return false;
   }
 
-  boolean startNodeUsingK8s(String ip) throws Exception {
-    throw new NotImplementedException();
+  boolean startNodeUsingK8s(String ip){
+    return false;
   }
 
   // TODO change this to configuration version
-  boolean startNodeUsingDocker(String ip) throws Exception {
+  boolean startNodeUsingDocker(String ip){
     try {
       DockerClient dockerClient =
           DockerClientBuilder.getInstance("tcp://" + ip + ":" + dockerDaemonPort).build();

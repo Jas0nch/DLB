@@ -11,7 +11,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,20 +40,18 @@ public class MonitoringServiceImpl implements MonitoringService {
   double scaleThreshold = 0.75;
   double descaleThreshold = 0.5;
 
-  @Autowired
-  ManageService manageService;
+  @Autowired ManageService manageService;
 
-  @Autowired
-  UpstreamServerGroups upstreamServerGroups;
+  @Autowired UpstreamServerGroups upstreamServerGroups;
 
   public MonitoringServiceImpl() throws ExecutionException, InterruptedException {
     status = new ConcurrentHashMap<>();
-    Map<String, UpstreamServerGroup> map = upstreamServerGroups.getMap();
+//    Map<String, UpstreamServerGroup> map = upstreamServerGroups.getMap();
     urls = new ConcurrentHashMap<>();
     heartbeating = new ConcurrentHashMap<>();
   }
 
-  public void addUrl(String groupName, String url) throws ExecutionException, InterruptedException {
+  public void addUrl(String groupName, String url) {
     if (!urls.containsKey(groupName)) urls.put(groupName, new HashSet<>());
 
     urls.get(groupName).add(url);
@@ -73,7 +70,7 @@ public class MonitoringServiceImpl implements MonitoringService {
     double cpu = 0;
     double mem = 0;
     int size = heartbeating.get(groupName).size();
-    for (String ip:heartbeating.get(groupName)){
+    for (String ip : heartbeating.get(groupName)) {
       String[] responseArr = sendRequest(ip + statusSuffix).split(" ");
       if (responseArr.length != 3) {
         throw new Exception("info data incorrect format");
@@ -82,23 +79,39 @@ public class MonitoringServiceImpl implements MonitoringService {
       mem += Double.valueOf(responseArr[2]);
     }
 
-    if (cpu / size > scaleThreshold || mem / size > scaleThreshold){
+    if (cpu / size > scaleThreshold || mem / size > scaleThreshold) {
       manageService.scale(groupName);
-    }
-    else if (cpu / size < descaleThreshold || mem / size < descaleThreshold){
+    } else if (cpu / size < descaleThreshold || mem / size < descaleThreshold) {
       manageService.descale(groupName);
     }
   }
 
-  public void heartbeat(String groupName) throws ExecutionException, InterruptedException {
-    for (String url : urls.get(groupName)) {
-      if (heartbeating.get(groupName).contains(url)) {
-        continue;
-      }
+  public void heartbeat(String groupName) {
+    try {
 
-      if (!heartbeating.containsKey(groupName)) {
-        heartbeating.put(groupName, new HashSet<>());
-        // create a task manager whole group
+      for (String url : urls.get(groupName)) {
+        if (heartbeating.get(groupName).contains(url)) {
+          continue;
+        }
+
+        if (!heartbeating.containsKey(groupName)) {
+          heartbeating.put(groupName, new HashSet<>());
+          // create a task manager whole group
+
+          new Timer("timer - " + url)
+              .schedule(
+                  new TimerTask() {
+                    @SneakyThrows
+                    @Override
+                    public void run() {
+                      manageServer(groupName);
+                    }
+                  },
+                  1000,
+                  1000);
+        }
+
+        heartbeating.get(groupName).add(url);
 
         new Timer("timer - " + url)
             .schedule(
@@ -106,36 +119,24 @@ public class MonitoringServiceImpl implements MonitoringService {
                   @SneakyThrows
                   @Override
                   public void run() {
+                    String ret = sendRequest(url + heartbeatSuffix);
+                    if (ret.trim().equals(live)) {
+                      status.put(url, true);
+                      System.out.println(url + " live");
+                    } else {
+                      System.out.println(url + " dead");
+                      status.put(url, false);
+                    }
+
                     manageServer(groupName);
                   }
                 },
                 1000,
                 1000);
-
       }
 
-      heartbeating.get(groupName).add(url);
-
-      new Timer("timer - " + url)
-          .schedule(
-              new TimerTask() {
-                @SneakyThrows
-                @Override
-                public void run() {
-                  String ret = sendRequest(url + heartbeatSuffix);
-                  if (ret.trim().equals(live)) {
-                    status.put(url, true);
-                    System.out.println(url + " live");
-                  } else {
-                    System.out.println(url + " dead");
-                    status.put(url, false);
-                  }
-
-                  manageServer(groupName);
-                }
-              },
-              1000,
-              1000);
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
     }
   }
 
@@ -210,7 +211,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   }
 
   @Override
-  public String[][] getInfoData(String clientUrl) throws Exception{
+  public String[][] getInfoData(String clientUrl) throws Exception {
     String[] responseArr = sendRequest(clientUrl + statusSuffix).split(" ");
     if (responseArr.length != 3) {
       throw new Exception("info data incorrect format");

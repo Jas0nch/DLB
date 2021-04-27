@@ -25,7 +25,7 @@ public class DLBConfiguration {
 
     @Bean
     @SuppressWarnings("all")
-    public UpstreamServerGroups upstreamServerGroups(ManageService manageService) throws Exception {
+    public UpstreamServerGroups upstreamServerGroups() throws Exception {
         String policy = (String) map.getOrDefault("policy", "rr");
 
         UpstreamServerGroups serverGroups = new UpstreamServerGroups();
@@ -52,12 +52,12 @@ public class DLBConfiguration {
 
             List<UpstreamServer> runningServers = new ArrayList<>();
 
-            for (UpstreamServer server : servers) {
-                if (manageService.startNode(server.getHost())) {
-                    runningServers.add(server);
-                    break;
-                }
-            }
+//            for (UpstreamServer server : servers) {
+//                if (manageService.startNode(server.getHost())) {
+//                    runningServers.add(server);
+//                    break;
+//                }
+//            }
 
             UpstreamServerGroup serverGroup = new UpstreamServerGroup(name, servers, runningServers, SchedulerFactory.createScheduler(policy));
 
