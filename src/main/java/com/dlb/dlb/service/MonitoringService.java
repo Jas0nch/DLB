@@ -7,5 +7,5 @@ public interface MonitoringService {
   String[] getMemData(String clientUrl) throws Exception;
   String[][] getInfoData(String clientUrl) throws Exception;
   boolean onlineStatus(String clientUrl);
-  void addUrl(String url) throws ExecutionException, InterruptedException;
+  void addUrl(String groupName, String url) throws ExecutionException, InterruptedException;
 }

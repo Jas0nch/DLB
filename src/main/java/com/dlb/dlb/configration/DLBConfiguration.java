@@ -25,7 +25,7 @@ public class DLBConfiguration {
 
     @Bean
     @SuppressWarnings("all")
-    public UpstreamServerGroups upstreamServerGroups(ManageService manageService) {
+    public UpstreamServerGroups upstreamServerGroups(ManageService manageService) throws Exception {
         String policy = (String) map.getOrDefault("policy", "rr");
 
         UpstreamServerGroups serverGroups = new UpstreamServerGroups();
@@ -87,7 +87,7 @@ public class DLBConfiguration {
         return uriMapping;
     }
 
-
+    @Data
     public static class UpstreamServerGroups {
         private Map<String, UpstreamServerGroup> map = new HashMap<>();
 
@@ -119,6 +119,14 @@ public class DLBConfiguration {
             this.servers = servers;
             this.scheduler = scheduler;
             this.runningServers = runningServers;
+        }
+
+        public void addRunningServer(UpstreamServer upstreamServer){
+            runningServers.add(upstreamServer);
+        }
+
+        public void deleteRunningServer(int index){
+            runningServers.remove(index);
         }
     }
 
