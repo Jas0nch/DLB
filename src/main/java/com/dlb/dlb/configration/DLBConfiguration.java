@@ -4,6 +4,7 @@ import com.dlb.dlb.scheduling.Scheduler;
 import com.dlb.dlb.scheduling.SchedulerFactory;
 import com.dlb.dlb.service.ManageService;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.YamlMapFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +15,6 @@ import java.util.*;
 @Configuration
 public class DLBConfiguration {
     private static Map<String, Object> map;
-
     {
         YamlMapFactoryBean yaml = new YamlMapFactoryBean();
 
@@ -52,6 +52,7 @@ public class DLBConfiguration {
 
             List<UpstreamServer> runningServers = new ArrayList<>();
 
+
 //            for (UpstreamServer server : servers) {
 //                if (manageService.startNode(server.getHost())) {
 //                    runningServers.add(server);
@@ -59,7 +60,7 @@ public class DLBConfiguration {
 //                }
 //            }
 
-            UpstreamServerGroup serverGroup = new UpstreamServerGroup(name, servers, runningServers, SchedulerFactory.createScheduler(policy));
+            UpstreamServerGroup serverGroup = new UpstreamServerGroup(name, servers, SchedulerFactory.createScheduler(policy));
 
             serverGroups.addGroup(serverGroup);
         }
@@ -100,25 +101,28 @@ public class DLBConfiguration {
         public UpstreamServerGroup serverGroup(String groupName) {
             return map.get(groupName);
         }
+
+        public Set<String> allGroupNames() {
+            return map.keySet();
+        }
     }
 
     @Data
     public static class UpstreamServerGroup {
         private String name;
         private List<UpstreamServer> servers;
-        private List<UpstreamServer> runningServers;
+        private List<UpstreamServer> runningServers = new ArrayList<>();
         private Scheduler scheduler;
 
         public String taskServer() {
             return scheduler.schedule();
         }
 
-        public UpstreamServerGroup(String name, List<UpstreamServer> servers, List<UpstreamServer> runningServers, Scheduler scheduler) {
+        public UpstreamServerGroup(String name, List<UpstreamServer> servers, Scheduler scheduler) {
             this.name = name;
             scheduler.setServers(runningServers);
             this.servers = servers;
             this.scheduler = scheduler;
-            this.runningServers = runningServers;
         }
 
         public void addRunningServer(UpstreamServer upstreamServer){
@@ -141,8 +145,8 @@ public class DLBConfiguration {
             this.server = server;
             this.weight = weight;
             String[] split = server.split(":");
-            this.host = split[0];
-            this.port = Integer.parseInt(split[1]);
+            this.host = server.substring(0, server.length() - split[split.length - 1].length() - 1);
+            this.port = Integer.parseInt(split[split.length - 1]);
         }
     }
 
