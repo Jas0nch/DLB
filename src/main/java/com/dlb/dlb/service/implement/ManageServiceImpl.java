@@ -21,7 +21,9 @@ import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.TimeUnit;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -117,9 +119,19 @@ public class ManageServiceImpl implements ManageService {
       if (!find) {
         res = startNode(upstreamServer.getHost());
         if (res) {
-          System.out.println("starting " + upstreamServer.getHost().toString());
-          upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
-          monitoringService.addUrl(groupName, upstreamServer.getHost());
+          System.out.println("starting " + upstreamServer.getHost());
+
+          TimerTask task =
+              new TimerTask() {
+                @Override
+                public void run(Timeout timeout) throws Exception {
+                  System.out.println(upstreamServer.getHost() + " added to running");
+                  upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
+                  monitoringService.addUrl(groupName, upstreamServer.getHost());
+                }
+              };
+
+          timer.newTimeout(task, 5, TimeUnit.SECONDS);
         }
         break;
       }
@@ -128,25 +140,27 @@ public class ManageServiceImpl implements ManageService {
     return res;
   }
 
+  // create delayed task
+  HashedWheelTimer timer =
+      new HashedWheelTimer(
+          1,
+          TimeUnit.SECONDS,
+          100);
+
   // stop server after 10 seconds
   @Override
   public synchronized boolean descale(String groupName) throws Exception {
     List<UpstreamServer> running = upstreamServerGroups.serverGroup(groupName).getRunningServers();
 
-    if (running.size() == 0) {
+    if (running.size() <= 1) {
       return false;
     }
 
     UpstreamServer chosen = running.get(0);
+
+    System.out.println("stopping " + chosen.getHost());
+    monitoringService.deleteUrl(groupName, chosen.getHost());
     upstreamServerGroups.serverGroup(groupName).deleteRunningServer(0);
-
-    // create delayed task
-    HashedWheelTimer timer =
-        new HashedWheelTimer(
-            10,
-            TimeUnit.SECONDS,
-            100);
-
     TimerTask task =
         new TimerTask() {
           @Override
@@ -156,7 +170,7 @@ public class ManageServiceImpl implements ManageService {
           }
         };
 
-    timer.newTimeout(task, 0, TimeUnit.SECONDS);
+    timer.newTimeout(task, 10, TimeUnit.SECONDS);
 
     return false;
   }
@@ -182,13 +196,17 @@ public class ManageServiceImpl implements ManageService {
       Ports portBindings = new Ports();
       portBindings.bind(tcp8081, Binding.bindPort(8080));
 
+      dockerClient.removeContainerCmd(containerName).exec();
+
       CreateContainerResponse container =
           dockerClient
               .createContainerCmd(imageName)
-              .withCmd("-d")
               .withName(containerName)
               .withExposedPorts(tcp8081)
               .withHostConfig(new HostConfig().withPortBindings(portBindings))
+              .withCmd("/bin/sh")
+              .withStdinOpen(true)
+              .withTty(true)
               .exec();
 
       dockerClient.startContainerCmd(container.getId()).exec();

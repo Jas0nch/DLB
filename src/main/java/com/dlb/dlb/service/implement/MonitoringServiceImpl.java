@@ -1,6 +1,5 @@
 package com.dlb.dlb.service.implement;
 
-import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroup;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
@@ -14,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
@@ -30,6 +28,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   static ConcurrentHashMap<String, LinkedList<String>> cpuData = new ConcurrentHashMap<>();
   static ConcurrentHashMap<String, LinkedList<String>> memData = new ConcurrentHashMap<>();
   static String live = "hello";
+  static String httpPrefix = "http://";
   static String heartbeatSuffix = ":8080/hello";
   static String statusSuffix = ":8080/cpu";
   int capacity = 10;
@@ -37,8 +36,12 @@ public class MonitoringServiceImpl implements MonitoringService {
   ConcurrentHashMap<String, HashSet<String>> urls; // urls need to be monitoring
   ConcurrentHashMap<String, HashSet<String>> heartbeating; // urls already monitoring
 
-  double scaleThreshold = 0.75;
-  double descaleThreshold = 0.5;
+  double cpuScaleThreshold = 0.2;
+  double cpuDescaleThreshold = 0.5;
+
+  double memScaleThreshold = 0.75;
+  double memDescaleThreshold = 0.5;
+
 
   @Autowired ManageService manageService;
 
@@ -61,27 +64,56 @@ public class MonitoringServiceImpl implements MonitoringService {
     heartbeat(groupName);
   }
 
+  public void deleteUrl(String groupName, String url){
+    urls.get(groupName).remove(url);
+
+    if (urls.get(groupName).size() == 0)
+      groupTimer.get(groupName).cancel();
+
+    cpuData.remove(url);
+    memData.remove(url);
+
+    heartbeating.get(groupName).remove(url);
+    stopHeartbeat(url);
+  }
+
+  ConcurrentHashMap<String, Timer> groupTimer = new ConcurrentHashMap<>();
+  ConcurrentHashMap<String, Timer> urlTimer = new ConcurrentHashMap<>();
+
+  public void stopHeartbeat(String url){
+    if (urlTimer.containsKey(url)){
+      urlTimer.get(url).cancel();
+    }
+  }
+
   public boolean onlineStatus(String clientUrl) {
     return status.getOrDefault(clientUrl, false);
   }
 
   synchronized void manageServer(String groupName) throws Exception {
-    double cpu = 0;
-    double mem = 0;
-    int size = heartbeating.get(groupName).size();
-    for (String ip : heartbeating.get(groupName)) {
-      String[] responseArr = sendRequest(ip + statusSuffix).split(" ");
-      if (responseArr.length != 3) {
-        throw new Exception("info data incorrect format");
+    try{
+      double cpu = 0;
+      double mem = 0;
+      int size = heartbeating.get(groupName).size();
+      for (String ip : heartbeating.get(groupName)) {
+        String[] responseArr = sendRequest(ip + statusSuffix).split(" ");
+        if (responseArr.length != 3) {
+          //          throw new Exception("info data incorrect format");
+          System.out.println("info data incorrect format");
+          break;
+        }
+        cpu += Double.valueOf(responseArr[1]);
+        mem += Double.valueOf(responseArr[2]);
       }
-      cpu += Double.valueOf(responseArr[1]);
-      mem += Double.valueOf(responseArr[2]);
-    }
 
-    if (cpu / size > scaleThreshold || mem / size > scaleThreshold) {
-      manageService.scale(groupName);
-    } else if (cpu / size < descaleThreshold || mem / size < descaleThreshold) {
-      manageService.descale(groupName);
+      if (cpu / size / 100 > cpuScaleThreshold || mem / size / 100 > memScaleThreshold) {
+        manageService.scale(groupName);
+      } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
+        manageService.descale(groupName);
+      }
+    }
+    catch (Exception e){
+      e.printStackTrace();
     }
   }
 
@@ -92,8 +124,8 @@ public class MonitoringServiceImpl implements MonitoringService {
           heartbeating.put(groupName, new HashSet<>());
           // create a task manager whole group
 
-          new Timer("timer - " + url)
-              .schedule(
+          Timer timer = new Timer("timer - " + url);
+            timer.schedule(
                   new TimerTask() {
                     @SneakyThrows
                     @Override
@@ -103,6 +135,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                   },
                   10000,
                   1000);
+
+            groupTimer.put(groupName, timer);
         }
 
         if (heartbeating.get(groupName).contains(url)) {
@@ -111,8 +145,9 @@ public class MonitoringServiceImpl implements MonitoringService {
 
         heartbeating.get(groupName).add(url);
 
-        new Timer("timer - " + url)
-            .schedule(
+        // heartbeat timer
+        Timer hbTimer = new Timer("timer - " + url);
+        hbTimer.schedule(
                 new TimerTask() {
                   @SneakyThrows
                   @Override
@@ -125,12 +160,12 @@ public class MonitoringServiceImpl implements MonitoringService {
                       System.out.println(url + " dead");
                       status.put(url, false);
                     }
-
-                    manageServer(groupName);
                   }
                 },
                 10000,
                 1000);
+
+          urlTimer.put(url, hbTimer);
       }
 
     } catch (Exception e) {
@@ -145,7 +180,7 @@ public class MonitoringServiceImpl implements MonitoringService {
               URL url = null;
               String res = "";
               try {
-                url = new URL(clientUrl);
+                url = new URL(httpPrefix + clientUrl);
               } catch (MalformedURLException e) {
                 e.printStackTrace();
               }
@@ -160,6 +195,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 e.printStackTrace();
               } catch (IOException e) {
                 e.printStackTrace();
+              } catch (Exception e) {
+                System.out.println(e.getMessage());
               }
 
               System.out.println(

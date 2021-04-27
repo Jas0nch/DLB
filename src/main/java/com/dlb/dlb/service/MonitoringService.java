@@ -8,4 +8,5 @@ public interface MonitoringService {
   String[][] getInfoData(String clientUrl) throws Exception;
   boolean onlineStatus(String clientUrl);
   void addUrl(String groupName, String url);
+  void deleteUrl(String groupName, String url);
 }
