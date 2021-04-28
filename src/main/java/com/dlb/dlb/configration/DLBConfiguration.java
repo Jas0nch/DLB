@@ -13,7 +13,7 @@ import java.util.*;
 
 @Configuration
 public class DLBConfiguration {
-    private static Map<String, Object> map;
+    public static Map<String, Object> map;
     {
         YamlMapFactoryBean yaml = new YamlMapFactoryBean();
 

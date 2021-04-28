@@ -1,5 +1,6 @@
 package com.dlb.dlb.service.implement;
 
+import com.dlb.dlb.configration.DLBConfiguration;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServer;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
@@ -26,6 +27,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ManageServiceImpl implements ManageService {
+  int test = Integer.valueOf(DLBConfiguration.map.get("test").toString());
+  // test = 1 means monitoring feature, 2 means scale feature
+
 
   static String imageName = "stangithubdocker/dlb-client";
   static String containerName = "client";
@@ -105,10 +109,10 @@ public class ManageServiceImpl implements ManageService {
     List<UpstreamServer> running = upstreamServerGroups.serverGroup(groupName).getRunningServers();
 
     // no resources
-//    if (all.size() == running.size() + deadTimer.size() + scaleBuffer.size()){
-//      System.out.println("alert: full workload");
-//      return false;
-//    }
+    if (all.size() == running.size() + deadTimer.size() + scaleBuffer.size()){
+      System.out.println("alert: full workload");
+      return false;
+    }
 
     boolean res = false;
     for (UpstreamServer upstreamServer : all) {
@@ -136,13 +140,17 @@ public class ManageServiceImpl implements ManageService {
         }
 
         if (res) {
-          System.out.println("starting " + upstreamServer.getHost());
+          if (test == 2){
+            System.out.println("starting " + upstreamServer.getHost());
+          }
 
           TimerTask task =
               new TimerTask() {
                 @Override
                 public void run(Timeout timeout) throws Exception {
-                  System.out.println(upstreamServer.getHost() + " added to running");
+                  if (test == 2){
+                    System.out.println(upstreamServer.getHost() + " added to running");
+                  }
                   scaleBuffer.remove(upstreamServer.getHost());
                   upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
                   monitoringService.addUrl(groupName, upstreamServer.getHost());
@@ -186,8 +194,10 @@ public class ManageServiceImpl implements ManageService {
         new TimerTask() {
           @Override
           public void run(Timeout timeout) throws Exception {
+            if (test == 2){
+              System.out.println("stopping node in " + chosen.getHost() + " at " + LocalDateTime.now());
+            }
             stopNode(chosen.getHost());
-            System.out.println("run tasks" + " ，time：" + LocalDateTime.now());
           }
         };
 
@@ -203,7 +213,9 @@ public class ManageServiceImpl implements ManageService {
   // TODO change this to configuration version
   boolean startNodeUsingDocker(String ip){
     try {
-      System.out.println("Starting node in " + ip);
+      if (test == 2){
+        System.out.println("prepare to start node " + ip);
+      }
       DockerClient dockerClient =
           DockerClientBuilder.getInstance("tcp://" + ip + ":" + dockerDaemonPort).build();
 

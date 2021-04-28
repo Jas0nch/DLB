@@ -1,5 +1,6 @@
 package com.dlb.dlb.service.implement;
 
+import com.dlb.dlb.configration.DLBConfiguration;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
@@ -7,7 +8,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +23,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class MonitoringServiceImpl implements MonitoringService {
 
+  int test = Integer.valueOf(DLBConfiguration.map.get("test").toString());
+  // test = 1 means monitoring feature, 2 means scale feature
+
   static ConcurrentHashMap<String, LinkedList<String>> cpuData = new ConcurrentHashMap<>();
   static ConcurrentHashMap<String, LinkedList<String>> memData = new ConcurrentHashMap<>();
   static String live = "hello";
@@ -34,7 +37,7 @@ public class MonitoringServiceImpl implements MonitoringService {
   ConcurrentHashMap<String, HashSet<String>> urls; // urls need to be monitoring
   ConcurrentHashMap<String, HashSet<String>> heartbeating; // urls already monitoring
 
-  double cpuScaleThreshold = 0.2;
+  double cpuScaleThreshold = 0.75;
   double cpuDescaleThreshold = 0.5;
 
   double memScaleThreshold = 1.1;
@@ -104,7 +107,9 @@ public class MonitoringServiceImpl implements MonitoringService {
         String[] responseArr = sendRequest(ip + statusSuffix).split(" ");
         if (responseArr.length != 3) {
           //          throw new Exception("info data incorrect format");
-          System.out.println("info data incorrect format");
+          if (test == 1){
+            System.out.println("info data incorrect format");
+          }
           break;
         }
         cpu += Double.valueOf(responseArr[1]);
@@ -117,6 +122,7 @@ public class MonitoringServiceImpl implements MonitoringService {
           if (scaleCnt > 10){
             manageService.scale(groupName);
             dsCnt = 0;
+            scaleCnt = -20;
           }
 
         } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
@@ -124,6 +130,7 @@ public class MonitoringServiceImpl implements MonitoringService {
           if (dsCnt > 120){
             manageService.descale(groupName);
             scaleCnt = 0;
+            dsCnt = -20;
           }
         }
         else {
@@ -178,9 +185,13 @@ public class MonitoringServiceImpl implements MonitoringService {
                     String ret = sendRequest(url + heartbeatSuffix);
                     if (ret.trim().equals(live)) {
                       status.put(url, true);
-                      System.out.println(url + " live");
+                      if (test == 2){
+                        System.out.println(url + " live");
+                      }
                     } else {
-                      System.out.println(url + " dead");
+                      if (test == 2){
+                        System.out.println(url + " dead");
+                      }
                       status.put(url, false);
 
                       frozen(groupName, url);
