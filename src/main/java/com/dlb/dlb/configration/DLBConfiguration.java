@@ -133,6 +133,33 @@ public class DLBConfiguration {
         public void deleteRunningServer(int index){
             runningServers.remove(index);
         }
+
+        public void deleteRunningServerUsingIP(String ip){
+            int idx = 0;
+            for (UpstreamServer upstreamServer:runningServers){
+                if (upstreamServer.getHost().equals(ip)){
+                    break;
+                }
+                idx++;
+            }
+
+            if (idx != runningServers.size())
+                deleteRunningServer(idx);
+        }
+
+        public void addRunningServerUsingIP(String ip){
+            UpstreamServer chosen = null;
+            for (UpstreamServer upstreamServer:servers){
+                if (upstreamServer.getHost().equals(ip)){
+                    chosen = upstreamServer;
+                    break;
+                }
+            }
+
+            if (chosen != null){
+                addRunningServer(chosen);
+            }
+        }
     }
 
     @Data

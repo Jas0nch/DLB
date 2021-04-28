@@ -1,22 +1,18 @@
 package com.dlb.dlb.service.implement;
 
-import com.dlb.dlb.configration.DLBConfiguration;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServer;
 import com.dlb.dlb.configration.DLBConfiguration.UpstreamServerGroups;
 import com.dlb.dlb.service.ManageService;
 import com.dlb.dlb.service.MonitoringService;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Info;
 import com.github.dockerjava.api.model.Link;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.Ports.Binding;
-import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.core.DockerClientBuilder;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timeout;
@@ -26,9 +22,6 @@ import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.swing.plaf.basic.BasicButtonUI;
-import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -112,6 +105,10 @@ public class ManageServiceImpl implements ManageService {
     List<UpstreamServer> running = upstreamServerGroups.serverGroup(groupName).getRunningServers();
     boolean res = false;
     for (UpstreamServer upstreamServer : all) {
+      if (deadTimer.containsKey(upstreamServer.getHost())){
+        continue;
+      }
+
       boolean find = false;
       for (UpstreamServer run : running) {
         if (upstreamServer.getHost().equals(run.getHost())) {
@@ -247,4 +244,18 @@ public class ManageServiceImpl implements ManageService {
       return false;
     }
   }
+
+  ConcurrentHashMap<String, Timer> deadTimer = new ConcurrentHashMap<>();
+
+  public void addToDead(String groupName, String ip, Timer t){
+    deadTimer.put(ip, t);
+  }
+
+  public void deleteFromDead(String groupName, String ip){
+    if (deadTimer.containsKey(ip)){
+      deadTimer.get(ip).cancel();
+      deadTimer.remove(ip);
+    }
+  }
+
 }

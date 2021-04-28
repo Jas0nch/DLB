@@ -91,8 +91,8 @@ public class MonitoringServiceImpl implements MonitoringService {
     return status.getOrDefault(clientUrl, false);
   }
 
-  int hbCnt = 0;
-  int dsCnt = 0;
+  int hbCnt = 0;  // heartbeat cnt
+  int dsCnt = 0;  // descale cnt
 
   synchronized void manageServer(String groupName) throws Exception {
     try{
@@ -174,6 +174,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                     } else {
                       System.out.println(url + " dead");
                       status.put(url, false);
+
+                      frozen(groupName, url);
                     }
                   }
                 },
@@ -185,6 +187,36 @@ public class MonitoringServiceImpl implements MonitoringService {
 
     } catch (Exception e) {
       System.out.println(e.getStackTrace());
+    }
+  }
+
+  void frozen(String groupName, String ip){
+    Timer tryTimer = new Timer("try to call frozen server " + ip);
+
+    tryTimer.schedule(
+        new java.util.TimerTask() {
+          @SneakyThrows
+          @Override
+          public void run() {
+            String ret = sendRequest(ip + heartbeatSuffix);
+            if (ret.trim().equals(live)) {
+              status.put(ip, true);
+              manageService.deleteFromDead(groupName, ip);
+            }
+          }
+        },
+        10000,
+        1000);
+
+    upstreamServerGroups.serverGroup(groupName).deleteRunningServerUsingIP(ip);
+    manageService.addToDead(groupName, ip, tryTimer);
+    if (urlTimer.containsKey(ip)){
+      urlTimer.get(ip).cancel();
+    }
+    urlTimer.remove(ip);
+
+    if (heartbeating.containsKey(groupName) && heartbeating.get(groupName).contains(ip)){
+      heartbeating.get(groupName).remove(ip);
     }
   }
 
