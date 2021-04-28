@@ -128,6 +128,7 @@ public class MonitoringServiceImpl implements MonitoringService {
         }
         else {
           dsCnt = 0;
+          scaleCnt = 0;
         }
       }
 
