@@ -7,7 +7,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 @Data
 public class IPHashScheduler extends Scheduler {
     public IPHashScheduler() {
-        super();
+        super("Source IP Hashing");
     }
 
     @Override

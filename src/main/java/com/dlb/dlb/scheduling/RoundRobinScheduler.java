@@ -7,7 +7,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 @Data
 public class RoundRobinScheduler extends Scheduler {
     public RoundRobinScheduler() {
-        super();
+        super("Round Robin");
     }
 
     @Override

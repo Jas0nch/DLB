@@ -9,7 +9,7 @@ public class WeightedRoundRobinScheduler extends Scheduler {
     private int count;
 
     public WeightedRoundRobinScheduler() {
-        super();
+        super("Weighted Round Robin");
         count = 0;
     }
 
@@ -31,10 +31,10 @@ public class WeightedRoundRobinScheduler extends Scheduler {
             for (int i = 0; i < servers.size(); i++) {
                 DLBConfiguration.UpstreamServer upstreamServer = servers.get(i);
                 if (upstreamServer.getWeight() + temp > count) {
+                    index = i;
                     break;
                 } else {
                     temp += upstreamServer.getWeight();
-                    index = i;
                 }
             }
 
