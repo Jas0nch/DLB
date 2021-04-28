@@ -103,9 +103,16 @@ public class ManageServiceImpl implements ManageService {
   public synchronized boolean scale(String groupName){
     List<UpstreamServer> all = upstreamServerGroups.serverGroup(groupName).getServers();
     List<UpstreamServer> running = upstreamServerGroups.serverGroup(groupName).getRunningServers();
+
+    // no resources
+//    if (all.size() == running.size() + deadTimer.size() + scaleBuffer.size()){
+//      System.out.println("alert: full workload");
+//      return false;
+//    }
+
     boolean res = false;
     for (UpstreamServer upstreamServer : all) {
-      if (deadTimer.containsKey(upstreamServer.getHost())){
+      if (deadTimer.containsKey(upstreamServer.getHost()) || scaleBuffer.containsKey(upstreamServer.getHost())){
         continue;
       }
 
@@ -118,12 +125,13 @@ public class ManageServiceImpl implements ManageService {
       }
 
       if (!find) {
-        if (buffer.containsKey(upstreamServer.getHost())){
-          buffer.get(upstreamServer.getHost()).cancel();
-          buffer.remove(upstreamServer.getHost());
+        if (descaleBuffer.containsKey(upstreamServer.getHost())){
+          descaleBuffer.get(upstreamServer.getHost()).cancel();
+          descaleBuffer.remove(upstreamServer.getHost());
           res = true;
         }
         else {
+          scaleBuffer.put(upstreamServer.getHost(), "");
           res = startNode(upstreamServer.getHost());
         }
 
@@ -135,6 +143,7 @@ public class ManageServiceImpl implements ManageService {
                 @Override
                 public void run(Timeout timeout) throws Exception {
                   System.out.println(upstreamServer.getHost() + " added to running");
+                  scaleBuffer.remove(upstreamServer.getHost());
                   upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
                   monitoringService.addUrl(groupName, upstreamServer.getHost());
                 }
@@ -156,7 +165,8 @@ public class ManageServiceImpl implements ManageService {
           TimeUnit.SECONDS,
           100);
 
-  ConcurrentHashMap<String, Timeout> buffer = new ConcurrentHashMap<>();
+  ConcurrentHashMap<String, Timeout> descaleBuffer = new ConcurrentHashMap<>();
+  ConcurrentHashMap<String, String> scaleBuffer = new ConcurrentHashMap<>();
 
   // stop server after 10 seconds
   @Override
@@ -182,7 +192,7 @@ public class ManageServiceImpl implements ManageService {
         };
 
     Timeout timeout = timer.newTimeout(task, 10, TimeUnit.SECONDS);
-    buffer.put(chosen.getHost(), timeout);
+    descaleBuffer.put(chosen.getHost(), timeout);
     return false;
   }
 
@@ -211,6 +221,12 @@ public class ManageServiceImpl implements ManageService {
       portBindings.bind(tcp8000, Binding.bindPort(8000));
 
       try{
+        InspectContainerResponse inspectContainerResponse =
+            dockerClient.inspectContainerCmd(containerName).exec();
+        if (inspectContainerResponse.getState().getRunning()){
+          dockerClient.stopContainerCmd(containerName).withTimeout(2).exec();
+        }
+
         dockerClient.removeContainerCmd(containerName).exec();
       }
       catch (Exception e){

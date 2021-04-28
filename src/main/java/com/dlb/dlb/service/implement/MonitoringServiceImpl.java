@@ -93,6 +93,7 @@ public class MonitoringServiceImpl implements MonitoringService {
 
   int hbCnt = 0;  // heartbeat cnt
   int dsCnt = 0;  // descale cnt
+  int scaleCnt = 0;
 
   synchronized void manageServer(String groupName) throws Exception {
     try{
@@ -112,12 +113,18 @@ public class MonitoringServiceImpl implements MonitoringService {
 
       if (hbCnt > 15){
         if (cpu / size / 100 > cpuScaleThreshold || mem / size / 100 > memScaleThreshold) {
-          manageService.scale(groupName);
-          dsCnt = 0;
+          scaleCnt++;
+          if (scaleCnt > 10){
+            manageService.scale(groupName);
+            dsCnt = 0;
+          }
+
         } else if (cpu / size / 100 < cpuDescaleThreshold || mem / size / 100 < memDescaleThreshold) {
           dsCnt++;
-          if (dsCnt > 120)
+          if (dsCnt > 120){
             manageService.descale(groupName);
+            scaleCnt = 0;
+          }
         }
         else {
           dsCnt = 0;
@@ -242,8 +249,8 @@ public class MonitoringServiceImpl implements MonitoringService {
                 System.out.println(e.getMessage());
               }
 
-              System.out.println(
-                  LocalDateTime.now().toString() + " query " + clientUrl + " return " + res);
+//              System.out.println(
+//                  LocalDateTime.now().toString() + " query " + clientUrl + " return " + res);
               return res;
             });
 
