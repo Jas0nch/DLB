@@ -214,13 +214,14 @@ public class MonitoringServiceImpl implements MonitoringService {
   }
 
   void frozen(String groupName, String ip){
-    Timer tryTimer = new Timer("try to call frozen server " + ip);
+    Timer tryTimer = new Timer("try to awake frozen server " + ip);
 
     tryTimer.schedule(
         new java.util.TimerTask() {
           @SneakyThrows
           @Override
           public void run() {
+            manageService.startNode(ip);
             String ret = sendRequest(ip + heartbeatSuffix);
             if (ret.trim().equals(live)) {
               status.put(ip, true);

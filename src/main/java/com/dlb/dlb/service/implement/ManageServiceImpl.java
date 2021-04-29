@@ -138,35 +138,39 @@ public class ManageServiceImpl implements ManageService {
           res = true;
         }
         else {
-          scaleBuffer.put(upstreamServer.getHost(), "");
           res = startNode(upstreamServer.getHost());
         }
 
         if (res) {
           if (test == 2){
-            System.out.println("starting " + upstreamServer.getHost());
+            System.out.println("start " + upstreamServer.getHost() + " successfully");
           }
 
-          TimerTask task =
-              new TimerTask() {
-                @Override
-                public void run(Timeout timeout) throws Exception {
-                  if (test == 2){
-                    System.out.println(upstreamServer.getHost() + " added to running");
-                  }
-                  scaleBuffer.remove(upstreamServer.getHost());
-                  upstreamServerGroups.serverGroup(groupName).addRunningServer(upstreamServer);
-                  monitoringService.addUrl(groupName, upstreamServer.getHost());
-                }
-              };
-
-          timer.newTimeout(task, 10, TimeUnit.SECONDS);
+          onStartSuccess(upstreamServer.getHost(), groupName);
         }
         break;
       }
     }
 
     return res;
+  }
+
+  void onStartSuccess(String ip, String groupName){
+    // delay if the container is running but program is still preparing
+    TimerTask task =
+        new TimerTask() {
+          @Override
+          public void run(Timeout timeout) throws Exception {
+            if (test == 2){
+              System.out.println(ip + " added to running");
+            }
+            scaleBuffer.remove(ip);
+            upstreamServerGroups.serverGroup(groupName).addRunningServerUsingIP(ip);
+            monitoringService.addUrl(groupName, ip);
+          }
+        };
+
+    timer.newTimeout(task, 10, TimeUnit.SECONDS);
   }
 
   // create delayed task
@@ -219,6 +223,13 @@ public class ManageServiceImpl implements ManageService {
       if (test == 2){
         System.out.println("prepare to start node " + ip);
       }
+
+      if (scaleBuffer.containsKey(ip)){
+        return false;
+      }
+
+      scaleBuffer.put(ip, "");
+
       DockerClient dockerClient =
           DockerClientBuilder.getInstance("tcp://" + ip + ":" + dockerDaemonPort).build();
 
@@ -286,6 +297,7 @@ public class ManageServiceImpl implements ManageService {
     if (deadTimer.containsKey(ip)){
       deadTimer.get(ip).cancel();
       deadTimer.remove(ip);
+      onStartSuccess(ip, groupName);
     }
   }
 
