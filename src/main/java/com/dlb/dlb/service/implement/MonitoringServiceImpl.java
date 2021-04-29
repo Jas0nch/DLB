@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class MonitoringServiceImpl implements MonitoringService {
 
-  int test = Integer.valueOf(DLBConfiguration.map.get("test").toString());
+  int test = DLBConfiguration.flag;
   // test = 1 means monitoring feature, 2 means scale feature
 
   static ConcurrentHashMap<String, LinkedList<String>> cpuData = new ConcurrentHashMap<>();
@@ -37,11 +37,15 @@ public class MonitoringServiceImpl implements MonitoringService {
   ConcurrentHashMap<String, HashSet<String>> urls; // urls need to be monitoring
   ConcurrentHashMap<String, HashSet<String>> heartbeating; // urls already monitoring
 
-  double cpuScaleThreshold = 0.75;
-  double cpuDescaleThreshold = 0.5;
+  double cpuScaleThreshold = DLBConfiguration.cpuScaleThreshold;
+//  double cpuScaleThreshold = 0.75;
+//  double cpuDescaleThreshold = 0.5;
+  double cpuDescaleThreshold = DLBConfiguration.cpuDescaleThreshold;
 
-  double memScaleThreshold = 1.1;
-  double memDescaleThreshold = 0.5;
+  double memScaleThreshold = DLBConfiguration.memScaleThreshold;
+//  double memScaleThreshold = 1.1;
+  double memDescaleThreshold = DLBConfiguration.memDescaleThreshold;
+//  double memDescaleThreshold = 0.5;
 
 
   @Autowired ManageService manageService;

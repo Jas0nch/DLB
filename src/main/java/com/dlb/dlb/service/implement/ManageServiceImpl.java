@@ -27,15 +27,18 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ManageServiceImpl implements ManageService {
-  int test = Integer.valueOf(DLBConfiguration.map.get("test").toString());
+//  int test = Integer.valueOf(DLBConfiguration.map.get("test").toString());
+  int test = DLBConfiguration.flag;
   // test = 1 means monitoring feature, 2 means scale feature
 
 
-  static String imageName = "stangithubdocker/dlb-client";
+  static String imageName = DLBConfiguration.imageName;
+//  static String imageName = "stangithubdocker/dlb-client";
   static String containerName = "client";
 
   UpstreamServerGroups upstreamServerGroups;
-  String dockerDaemonPort = "2375";
+//  String dockerDaemonPort = "2375";
+  String dockerDaemonPort = DLBConfiguration.dockerDaemonPort;
 
   boolean useDocker = true;
 

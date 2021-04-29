@@ -17,6 +17,7 @@ import java.util.Set;
 @RestController
 public class ProxyController {
     private static final Logger logger = LoggerFactory.getLogger(ProxyController.class);
+    private int testFlag = DLBConfiguration.flag;
 
     @Autowired
     private DLBConfiguration.UpstreamServerGroups serverGroups;
@@ -50,7 +51,7 @@ public class ProxyController {
 
         String algorithm = serverGroup.getScheduler().getName();
 
-        logger.info("Current LB algorithm: [{}], selected server: [{}]", algorithm, server);
+        if (testFlag == 101) logger.info("Current LB algorithm: [{}], selected server: [{}]", algorithm, server);
 
 //        return null;
 
@@ -69,9 +70,11 @@ public class ProxyController {
 
     @GetMapping("/hyu/test")
     public String mytest() {
-        DLBConfiguration.UpstreamServerGroup serverGroup = serverGroups.serverGroup("book_search");
 
-        serverGroup.getRunningServers().addAll(serverGroup.getServers());
+        System.out.println(1/0);
+//        DLBConfiguration.UpstreamServerGroup serverGroup = serverGroups.serverGroup("book_search");
+//
+//        serverGroup.getRunningServers().addAll(serverGroup.getServers());
 //        DLBConfiguration.UpstreamServer toAdd = serverGroup.getServers().get(0);
 //        serverGroup.getRunningServers().add(toAdd);
 

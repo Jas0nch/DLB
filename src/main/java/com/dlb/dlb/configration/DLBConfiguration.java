@@ -14,12 +14,35 @@ import java.util.*;
 @Configuration
 public class DLBConfiguration {
     public static Map<String, Object> map;
+    public static int flag;
+    public static String imageName;
+    public static String dockerDaemonPort;
+    public static double cpuScaleThreshold;
+    public static double cpuDescaleThreshold;
+    public static double memScaleThreshold;
+    public static double memDescaleThreshold;
+
     {
         YamlMapFactoryBean yaml = new YamlMapFactoryBean();
 
         yaml.setResources(new FileSystemResource("../config/dlb.yml"));
 
         map = yaml.getObject();
+
+        flag = (Integer) map.getOrDefault("test", 0);
+
+        LinkedHashMap scaleMap = (LinkedHashMap) map.get("scale");
+
+        imageName = (String) scaleMap.get("image_name");
+        dockerDaemonPort = String.valueOf(scaleMap.get("remote_docker_daemon_port"));
+
+        LinkedHashMap cpuThresholdMap = (LinkedHashMap) scaleMap.get("cpu_metrics_threshold");
+        cpuScaleThreshold = (double) cpuThresholdMap.get("up");
+        cpuDescaleThreshold = (double) cpuThresholdMap.get("down");
+
+        LinkedHashMap memoryThresholdMap = (LinkedHashMap) scaleMap.get("memory_metrics_threshold");
+        memScaleThreshold = (double) memoryThresholdMap.get("up");
+        memDescaleThreshold = (double) memoryThresholdMap.get("down");
     }
 
     @Bean
