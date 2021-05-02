@@ -142,8 +142,8 @@ public class ManageServiceImpl implements ManageService {
         }
 
         if (res) {
-          if (test == 2){
-            System.out.println("start " + upstreamServer.getHost() + " successfully");
+          if (test >= 2){
+            System.out.println(LocalDateTime.now() + " " + "start " + upstreamServer.getHost() + " successfully");
           }
 
           onStartSuccess(upstreamServer.getHost(), groupName);
@@ -161,8 +161,8 @@ public class ManageServiceImpl implements ManageService {
         new TimerTask() {
           @Override
           public void run(Timeout timeout) throws Exception {
-            if (test == 2){
-              System.out.println(ip + " added to running");
+            if (test >= 2){
+              System.out.println(LocalDateTime.now() + " " + ip + " added to running");
             }
             scaleBuffer.remove(ip);
             upstreamServerGroups.serverGroup(groupName).addRunningServerUsingIP(ip);
@@ -201,8 +201,8 @@ public class ManageServiceImpl implements ManageService {
         new TimerTask() {
           @Override
           public void run(Timeout timeout) throws Exception {
-            if (test == 2){
-              System.out.println("stopping node in " + chosen.getHost() + " at " + LocalDateTime.now());
+            if (test >= 2){
+              System.out.println(LocalDateTime.now() + " " + "stopping node in " + chosen.getHost() + " at " + LocalDateTime.now());
             }
             stopNode(chosen.getHost());
           }
@@ -220,8 +220,8 @@ public class ManageServiceImpl implements ManageService {
   // TODO change this to configuration version
   boolean startNodeUsingDocker(String ip){
     try {
-      if (test == 2){
-        System.out.println("prepare to start node " + ip);
+      if (test >= 2){
+        System.out.println(LocalDateTime.now() + " " + "prepare to start node " + ip);
       }
 
       if (scaleBuffer.containsKey(ip)){

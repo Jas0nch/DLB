@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -189,12 +190,12 @@ public class MonitoringServiceImpl implements MonitoringService {
                     String ret = sendRequest(url + heartbeatSuffix);
                     if (ret.trim().equals(live)) {
                       status.put(url, true);
-                      if (test == 2){
-                        System.out.println(url + " live");
+                      if (test >= 2){
+                        System.out.println(LocalDateTime.now() + " " + url + " live");
                       }
                     } else {
-                      if (test == 2){
-                        System.out.println(url + " dead");
+                      if (test >= 2){
+                        System.out.println(LocalDateTime.now() + " " + url + " dead");
                       }
                       status.put(url, false);
 
