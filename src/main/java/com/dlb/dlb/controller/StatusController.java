@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+// for demo front page, Deprecated
 @Controller
 public class StatusController {
   @Autowired MonitoringService monitoringService;
