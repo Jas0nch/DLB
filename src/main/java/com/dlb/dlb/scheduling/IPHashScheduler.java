@@ -4,6 +4,9 @@ package com.dlb.dlb.scheduling;
 import lombok.Data;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 
+/**
+ * The scheduler that uses the ip hashing load balancing algorithm.
+ */
 @Data
 public class IPHashScheduler extends Scheduler {
     public IPHashScheduler() {

@@ -4,6 +4,9 @@ import com.dlb.dlb.configration.DLBConfiguration;
 import lombok.Data;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 
+/**
+ * The scheduler that uses the weighted Round-Robin load balancing algorithm.
+ */
 @Data
 public class WeightedRoundRobinScheduler extends Scheduler {
     private int count;

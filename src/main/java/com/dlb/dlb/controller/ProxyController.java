@@ -25,6 +25,14 @@ public class ProxyController {
     @Autowired
     private DLBConfiguration.URIMapping uriMapping;
 
+
+    /**
+     * This method will deal with the incoming requests. It will find out the corresponding upstream service group based
+     * on the URI, and forward the incoming requests to one of the upstream servers. Once it gets the response, it returns
+     * the result back to the client.
+     * @param request
+     * @return
+     */
     @GetMapping("/**")
     @ResponseBody
     public Mono<String> proxy(ServerHttpRequest request) {
@@ -66,18 +74,5 @@ public class ProxyController {
                 .bodyToMono(String.class);
 
         return mono;
-    }
-
-    @GetMapping("/hyu/test")
-    public String mytest() {
-
-        System.out.println(1/0);
-//        DLBConfiguration.UpstreamServerGroup serverGroup = serverGroups.serverGroup("book_search");
-//
-//        serverGroup.getRunningServers().addAll(serverGroup.getServers());
-//        DLBConfiguration.UpstreamServer toAdd = serverGroup.getServers().get(0);
-//        serverGroup.getRunningServers().add(toAdd);
-
-        return "ok";
     }
 }

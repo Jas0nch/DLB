@@ -11,15 +11,50 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 
 import java.util.*;
 
+/**
+ * This class will read the YML configuration file in the relative directory "../config/dlb.yml" and create corresponding
+ * Java beans for the use of other modules.
+ */
 @Configuration
 public class DLBConfiguration {
+    /**
+     * This map contains all configuration options specified in the configuration file: "../config/dlb.yml".
+     */
     public static Map<String, Object> map;
+
+    /**
+     * The test flag for developer to use.
+     */
     public static int flag;
+
+    /**
+     * The value specified by the scale.image_name attribute in the configuration file "../config/dlb.yml".
+     */
     public static String imageName;
+
+    /**
+     * The value specified by the scale.remote_docker_daemon_port attribute in the configuration file "../config/dlb.yml".
+     */
     public static String dockerDaemonPort;
+
+    /**
+     * The value specified by the scale.cpu_metrics_threshold.up attribute in the configuration file "../config/dlb.yml".
+     */
     public static double cpuScaleThreshold;
+
+    /**
+     * The value specified by the scale.cpu_metrics_threshold.down attribute in the configuration file "../config/dlb.yml".
+     */
     public static double cpuDescaleThreshold;
+
+    /**
+     * The value specified by the scale.memory_metrics_threshold.up attribute in the configuration file "../config/dlb.yml".
+     */
     public static double memScaleThreshold;
+
+    /**
+     * The value specified by the scale.memory_metrics_threshold.down attribute in the configuration file "../config/dlb.yml".
+     */
     public static double memDescaleThreshold;
 
     {
@@ -45,6 +80,11 @@ public class DLBConfiguration {
         memDescaleThreshold = (double) memoryThresholdMap.get("down");
     }
 
+    /**
+     * The method will use the values specified by the up-stream attribute to create corrensponding Java bean.
+     * @return
+     * @throws Exception
+     */
     @Bean
     @SuppressWarnings("all")
     public UpstreamServerGroups upstreamServerGroups() throws Exception {
@@ -91,6 +131,11 @@ public class DLBConfiguration {
         return serverGroups;
     }
 
+
+    /**
+     * This method will use the value specified by the location attribute to create the corresponding Java Bean.
+     * @return
+     */
     @Bean
     @SuppressWarnings("all")
     public URIMapping uriMapping() {
@@ -110,6 +155,11 @@ public class DLBConfiguration {
         return uriMapping;
     }
 
+
+    /**
+     * This class corresponds to the up-stream attribute in the configuration file "../config/dlb.yml", indicating a list
+     * of upstream service groups.
+     */
     @Data
     public static class UpstreamServerGroups {
         private Map<String, UpstreamServerGroup> map = new HashMap<>();
@@ -129,13 +179,37 @@ public class DLBConfiguration {
         }
     }
 
+    /**
+     * This class represents a certain upstream service group.
+     */
     @Data
     public static class UpstreamServerGroup {
+        /**
+         * The name of this upstream service group.
+         */
         private String name;
+
+        /**
+         * A list of all servers undertaking this kind of service.
+         */
         private List<UpstreamServer> servers;
+
+        /**
+         * A list of running servers to which the DLB can forward the corresponding requests at present.
+         */
         private List<UpstreamServer> runningServers = new ArrayList<>();
+
+        /**
+         * Represents the LB algorithm specified by the policy attribute in the configuration file "../config/yml".
+         */
         private Scheduler scheduler;
 
+
+        /**
+         * This method will determine the upstream server that handles the incoming request indeed.
+         * @param request
+         * @return
+         */
         public String taskServer(ServerHttpRequest request) {
             return scheduler.schedule(request);
         }
@@ -147,12 +221,21 @@ public class DLBConfiguration {
             this.scheduler = scheduler;
         }
 
+        /**
+         * When DLB decides to start and add a new server into the running server list, the Manage module will call this
+         * method.
+         * @param upstreamServer
+         */
         public void addRunningServer(UpstreamServer upstreamServer){
             synchronized (runningServers) {
                 runningServers.add(upstreamServer);
             }
         }
 
+        /**
+         * When DLB decides to remove and stop an idle server, the Manage module will call this method.
+         * @param index
+         */
         public void deleteRunningServer(int index){
             runningServers.remove(index);
         }
@@ -185,11 +268,30 @@ public class DLBConfiguration {
         }
     }
 
+
+    /**
+     * This class indicates a single upstream server, including its ip address, port number and scheduling weight.
+     */
     @Data
     public static class UpstreamServer {
+        /**
+         * The full server name.
+         */
         private String server;
+
+        /**
+         * The hostname or ip address of this server.
+         */
         private String host;
+
+        /**
+         * The port number of this server.
+         */
         private int port;
+
+        /**
+         * The weight that is specified in the configuration file "../config/dlb.yml".
+         */
         private int weight;
 
         public UpstreamServer(String server, int weight) {
@@ -201,7 +303,9 @@ public class DLBConfiguration {
         }
     }
 
-
+    /**
+     * This class represents the mappings from the URIs to the names of the upstream server groups.
+     */
     public static class URIMapping {
         private Map<String, String> map = new HashMap<>();
 
